@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minesweeper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      margin-top: 20px;
+      color: #333;
+    }
+
+    #difficulty-container {
+      margin: 20px 0;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #game-container {
+      display: grid;
+      justify-content: center;
+      gap: 2px;
+      margin: 20px auto;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      background-color: #ccc;
+      border: 1px solid #999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .cell.revealed {
+      background-color: #eee;
+      cursor: default;
+    }
+
+    .cell.mine {
+      background-color: red;
+      color: white;
+    }
+
+    .cell.flagged {
+      background-color: orange;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minesweeper</h1>
+  <div id="difficulty-container">
+    <button onclick="startGame('easy')">Easy</button>
+    <button onclick="startGame('medium')">Medium</button>
+    <button onclick="startGame('hard')">Hard</button>
+    <button onclick="startGame('extreme')">Extreme</button>
+  </div>
+  <div id="game-container"></div>
+
+  <script>
+    let gridSize, numMines, board, revealedCells, isTouchDevice;
+    const container = document.getElementById("game-container");
+
+    // Difficulty settings
+    const difficultySettings = {
+      easy: { gridSize: 8, numMines: 10 },
+      medium: { gridSize: 12, numMines: 25 },
+      hard: { gridSize: 16, numMines: 40 },
+      extreme: { gridSize: 20, numMines: 80 }
+    };
+
+    // Detect if the user is on a touchscreen device
+    function detectDevice() {
+      isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    }
+
+    // Start the game with the selected difficulty
+    function startGame(difficulty) {
+      const settings = difficultySettings[difficulty];
+      gridSize = settings.gridSize;
+      numMines = settings.numMines;
+      revealedCells = 0;
+      container.innerHTML = ""; // Clear the game board
+      initializeBoard();
+    }
+
+    // Initialize the board
+    function initializeBoard() {
+      board = [];
+      container.style.gridTemplateColumns = `repeat(${gridSize}, 30px)`;
+      container.style.gridTemplateRows = `repeat(${gridSize}, 30px)`;
+
+      for (let i = 0; i < gridSize; i++) {
+        board[i] = [];
+        for (let j = 0; j < gridSize; j++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.row = i;
+          cell.dataset.col = j;
+
+          // Add event listeners based on the device type
+          if (isTouchDevice) {
+            cell.addEventListener("touchstart", (e) => handleTouchStart(e, i, j));
+            cell.addEventListener("touchend", (e) => handleTouchEnd(e, i, j));
+          } else {
+            cell.addEventListener("click", () => revealCell(i, j));
+            cell.addEventListener("contextmenu", (e) => {
+              e.preventDefault();
+              toggleFlag(cell);
+            });
+          }
+
+          board[i][j] = { element: cell, isMine: false, isRevealed: false, isFlagged: false, adjacentMines: 0 };
+          container.appendChild(cell);
+        }
+      }
+      placeMines();
+      calculateAdjacentMines();
+    }
+
+    // Place mines randomly
+    function placeMines() {
+      let minesPlaced = 0;
+      while (minesPlaced < numMines) {
+        const row = Math.floor(Math.random() * gridSize);
+        const col = Math.floor(Math.random() * gridSize);
+        if (!board[row][col].isMine) {
+          board[row][col].isMine = true;
+          minesPlaced++;
+        }
+      }
+    }
+
+    // Calculate adjacent mines for each cell
+    function calculateAdjacentMines() {
+      const directions = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],         [0, 1],
+        [1, -1], [1, 0], [1, 1],
+      ];
+
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          if (board[i][j].isMine) continue;
+
+          let count = 0;
+          directions.forEach(([dx, dy]) => {
+            const x = i + dx, y = j + dy;
+            if (x >= 0 && x < gridSize && y >= 0 && y < gridSize && board[x][y].isMine) {
+              count++;
+            }
+          });
+          board[i][j].adjacentMines = count;
+        }
+      }
+    }
+
+    // Reveal a cell
+    function revealCell(row, col) {
+      const cell = board[row][col];
+      if (cell.isRevealed || cell.isFlagged) return;
+
+      cell.isRevealed = true;
+      revealedCells++;
+      cell.element.classList.add("revealed");
+
+      if (cell.isMine) {
+        cell.element.classList.add("mine");
+        alert("Game Over! You hit a mine.");
+        revealAllMines();
+        return;
+      }
+
+      if (cell.adjacentMines > 0) {
+        cell.element.textContent = cell.adjacentMines;
+      } else {
+        // Auto-reveal surrounding cells if no adjacent mines
+        const directions = [
+          [-1, -1], [-1, 0], [-1, 1],
+          [0, -1],         [0, 1],
+          [1, -1], [1, 0], [1, 1],
+        ];
+
+        directions.forEach(([dx, dy]) => {
+          const x = row + dx, y = col + dy;
+          if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+            revealCell(x, y);
+          }
+        });
+      }
+
+      if (revealedCells === gridSize * gridSize - numMines) {
+        alert("Congratulations! You win!");
+      }
+    }
+
+    // Toggle flag on a cell
+    function toggleFlag(cellElement) {
+      const row = parseInt(cellElement.dataset.row);
+      const col = parseInt(cellElement.dataset.col);
+      const cell = board[row][col];
+
+      if (cell.isRevealed) return;
+
+      cell.isFlagged = !cell.isFlagged;
+      cell.element.classList.toggle("flagged");
+    }
+
+    // Reveal all mines when game over
+    function revealAllMines() {
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          const cell = board[i][j];
+          if (cell.isMine) {
+            cell.element.classList.add("mine");
+          }
+        }
+      }
+    }
+
+    // Handle touch controls
+    let touchStartTime;
+    function handleTouchStart(e, row, col) {
+      touchStartTime = Date.now();
+    }
+
+    function handleTouchEnd(e, row, col) {
+      const touchDuration = Date.now() - touchStartTime;
+      const cell = board[row][col].element;
+
+      if (touchDuration < 500) {
+        revealCell(row, col); // Short touch: reveal cell
+      } else {
+        toggleFlag(cell); // Long touch: flag cell
+      }
+    }
+
+    detectDevice();
+    startGame('easy'); // Default to easy on page load
+  </script>
+</body>
+</html>
