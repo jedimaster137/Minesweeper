@@ -236,7 +236,7 @@
       const touchDuration = Date.now() - touchStartTime;
       const cell = board[row][col].element;
 
-      if (touchDuration < 500) {
+      if (touchDuration < 200) {
         revealCell(row, col);
       } else {
         toggleFlag(cell);
