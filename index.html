@@ -77,7 +77,6 @@
     let gridSize, numMines, board, revealedCells, isTouchDevice;
     const container = document.getElementById("game-container");
 
-    // Difficulty settings
     const difficultySettings = {
       easy: { gridSize: 8, numMines: 10 },
       medium: { gridSize: 12, numMines: 25 },
@@ -85,22 +84,19 @@
       extreme: { gridSize: 20, numMines: 80 }
     };
 
-    // Detect if the user is on a touchscreen device
     function detectDevice() {
       isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 
-    // Start the game with the selected difficulty
     function startGame(difficulty) {
       const settings = difficultySettings[difficulty];
       gridSize = settings.gridSize;
       numMines = settings.numMines;
       revealedCells = 0;
-      container.innerHTML = ""; // Clear the game board
+      container.innerHTML = "";
       initializeBoard();
     }
 
-    // Initialize the board
     function initializeBoard() {
       board = [];
       container.style.gridTemplateColumns = `repeat(${gridSize}, 30px)`;
@@ -114,7 +110,6 @@
           cell.dataset.row = i;
           cell.dataset.col = j;
 
-          // Add event listeners based on the device type
           if (isTouchDevice) {
             cell.addEventListener("touchstart", (e) => handleTouchStart(e, i, j));
             cell.addEventListener("touchend", (e) => handleTouchEnd(e, i, j));
@@ -134,7 +129,6 @@
       calculateAdjacentMines();
     }
 
-    // Place mines randomly
     function placeMines() {
       let minesPlaced = 0;
       while (minesPlaced < numMines) {
@@ -147,7 +141,6 @@
       }
     }
 
-    // Calculate adjacent mines for each cell
     function calculateAdjacentMines() {
       const directions = [
         [-1, -1], [-1, 0], [-1, 1],
@@ -171,7 +164,6 @@
       }
     }
 
-    // Reveal a cell
     function revealCell(row, col) {
       const cell = board[row][col];
       if (cell.isRevealed || cell.isFlagged) return;
@@ -190,19 +182,7 @@
       if (cell.adjacentMines > 0) {
         cell.element.textContent = cell.adjacentMines;
       } else {
-        // Auto-reveal surrounding cells if no adjacent mines
-        const directions = [
-          [-1, -1], [-1, 0], [-1, 1],
-          [0, -1],         [0, 1],
-          [1, -1], [1, 0], [1, 1],
-        ];
-
-        directions.forEach(([dx, dy]) => {
-          const x = row + dx, y = col + dy;
-          if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-            revealCell(x, y);
-          }
-        });
+        floodFill(row, col);
       }
 
       if (revealedCells === gridSize * gridSize - numMines) {
@@ -210,7 +190,21 @@
       }
     }
 
-    // Toggle flag on a cell
+    function floodFill(row, col) {
+      const directions = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],         [0, 1],
+        [1, -1], [1, 0], [1, 1],
+      ];
+
+      directions.forEach(([dx, dy]) => {
+        const x = row + dx, y = col + dy;
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize && !board[x][y].isRevealed) {
+          revealCell(x, y);
+        }
+      });
+    }
+
     function toggleFlag(cellElement) {
       const row = parseInt(cellElement.dataset.row);
       const col = parseInt(cellElement.dataset.col);
@@ -222,7 +216,6 @@
       cell.element.classList.toggle("flagged");
     }
 
-    // Reveal all mines when game over
     function revealAllMines() {
       for (let i = 0; i < gridSize; i++) {
         for (let j = 0; j < gridSize; j++) {
@@ -234,7 +227,6 @@
       }
     }
 
-    // Handle touch controls
     let touchStartTime;
     function handleTouchStart(e, row, col) {
       touchStartTime = Date.now();
@@ -245,14 +237,14 @@
       const cell = board[row][col].element;
 
       if (touchDuration < 500) {
-        revealCell(row, col); // Short touch: reveal cell
+        revealCell(row, col);
       } else {
-        toggleFlag(cell); // Long touch: flag cell
+        toggleFlag(cell);
       }
     }
 
     detectDevice();
-    startGame('easy'); // Default to easy on page load
+    startGame('easy');
   </script>
 </body>
 </html>
