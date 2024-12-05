@@ -74,7 +74,7 @@
   <div id="game-container"></div>
 
   <script>
-    let gridSize, numMines, board, revealedCells, isTouchDevice;
+    let gridSize, numMines, board, revealedCells, isTouchDevice, firstClick;
     const container = document.getElementById("game-container");
 
     const difficultySettings = {
@@ -93,6 +93,7 @@
       gridSize = settings.gridSize;
       numMines = settings.numMines;
       revealedCells = 0;
+      firstClick = true; // Reset first click flag
       container.innerHTML = "";
       initializeBoard();
     }
@@ -125,20 +126,21 @@
           container.appendChild(cell);
         }
       }
-      placeMines();
-      calculateAdjacentMines();
     }
 
-    function placeMines() {
+    function generateMines(excludedRow, excludedCol) {
       let minesPlaced = 0;
       while (minesPlaced < numMines) {
         const row = Math.floor(Math.random() * gridSize);
         const col = Math.floor(Math.random() * gridSize);
-        if (!board[row][col].isMine) {
+
+        // Avoid placing a mine on the excluded cell or an already mined cell
+        if (!board[row][col].isMine && (row !== excludedRow || col !== excludedCol)) {
           board[row][col].isMine = true;
           minesPlaced++;
         }
       }
+      calculateAdjacentMines();
     }
 
     function calculateAdjacentMines() {
@@ -167,6 +169,12 @@
     function revealCell(row, col) {
       const cell = board[row][col];
       if (cell.isRevealed || cell.isFlagged) return;
+
+      // Generate mines after the first click
+      if (firstClick) {
+        generateMines(row, col);
+        firstClick = false;
+      }
 
       cell.isRevealed = true;
       revealedCells++;
@@ -236,7 +244,7 @@
       const touchDuration = Date.now() - touchStartTime;
       const cell = board[row][col].element;
 
-      if (touchDuration < 200) {
+      if (touchDuration < 500) {
         revealCell(row, col);
       } else {
         toggleFlag(cell);
